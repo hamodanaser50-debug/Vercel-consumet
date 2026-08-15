@@ -7,32 +7,31 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// دالة لجلب المصدر حسب الاسم
 function getProvider(name) {
   const providerName = (name || 'gogoanime').toLowerCase();
   
   switch (providerName) {
     case 'gogoanime':
       return { instance: new ANIME.Gogoanime(), type: 'anime' };
+    case 'movies':
     case 'flixhq':
-      return { instance: new MOVIES.FlixHQ(), type: 'movie' };
+      // استعمال MovieKdramacool كبديل قوي للأفلام والمسلسلات بدون Block
+      return { instance: new MOVIES.MovieKdramacool(), type: 'movie' };
     default:
       return null;
   }
 }
 
-// الصفحة الرئيسية
 app.get('/', (req, res) => {
   res.status(200).json({
     status: 'online',
-    availableProviders: ['gogoanime', 'flixhq']
+    availableProviders: ['gogoanime', 'movies']
   });
 });
 
-// Endpoint البحث
 app.get('/api/search', async (req, res) => {
   try {
-    const { query, provider = 'gogoanime' } = req.query;
+    const { query, provider = 'movies' } = req.query;
 
     if (!query) {
       return res.status(400).json({ error: 'Query parameter is required' });
@@ -40,7 +39,7 @@ app.get('/api/search', async (req, res) => {
 
     const selected = getProvider(provider);
     if (!selected) {
-      return res.status(400).json({ error: 'Invalid provider. Available: gogoanime, flixhq' });
+      return res.status(400).json({ error: 'Invalid provider' });
     }
 
     const results = await selected.instance.search(query);
@@ -50,10 +49,9 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
-// Endpoint التفاصيل
 app.get('/api/info', async (req, res) => {
   try {
-    const { mediaId, provider = 'gogoanime' } = req.query;
+    const { mediaId, provider = 'movies' } = req.query;
 
     if (!mediaId) {
       return res.status(400).json({ error: 'mediaId parameter is required' });
@@ -61,7 +59,7 @@ app.get('/api/info', async (req, res) => {
 
     const selected = getProvider(provider);
     if (!selected) {
-      return res.status(400).json({ error: 'Invalid provider. Available: gogoanime, flixhq' });
+      return res.status(400).json({ error: 'Invalid provider' });
     }
 
     const info = selected.type === 'anime'
@@ -74,10 +72,9 @@ app.get('/api/info', async (req, res) => {
   }
 });
 
-// Endpoint جلب الـ Stream
 app.get('/api/watch', async (req, res) => {
   try {
-    const { episodeId, mediaId, provider = 'gogoanime' } = req.query;
+    const { episodeId, mediaId, provider = 'movies' } = req.query;
 
     if (!episodeId) {
       return res.status(400).json({ error: 'episodeId parameter is required' });
@@ -85,7 +82,7 @@ app.get('/api/watch', async (req, res) => {
 
     const selected = getProvider(provider);
     if (!selected) {
-      return res.status(400).json({ error: 'Invalid provider. Available: gogoanime, flixhq' });
+      return res.status(400).json({ error: 'Invalid provider' });
     }
 
     const sources = await selected.instance.fetchEpisodeSources(episodeId, mediaId);
