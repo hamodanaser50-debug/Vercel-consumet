@@ -7,24 +7,25 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 1. تهيئة المصادر المستقرة داخل Try/Catch لمنع طيحان السيرفر
-let providers = {};
-
-try {
-  providers = {
-    gogoanime: new ANIME.Gogoanime(),
-    flixhq: new MOVIES.FlixHQ()
-  };
-} catch (err) {
-  console.error("Error initializing providers:", err);
+// دالة لجلب المصدر حسب الاسم
+function getProvider(name) {
+  const providerName = (name || 'gogoanime').toLowerCase();
+  
+  switch (providerName) {
+    case 'gogoanime':
+      return { instance: new ANIME.Gogoanime(), type: 'anime' };
+    case 'flixhq':
+      return { instance: new MOVIES.FlixHQ(), type: 'movie' };
+    default:
+      return null;
+  }
 }
 
 // الصفحة الرئيسية
 app.get('/', (req, res) => {
   res.status(200).json({
     status: 'online',
-    message: 'Consumet Multi-Provider API is running!',
-    availableProviders: Object.keys(providers)
+    availableProviders: ['gogoanime', 'flixhq']
   });
 });
 
@@ -37,21 +38,19 @@ app.get('/api/search', async (req, res) => {
       return res.status(400).json({ error: 'Query parameter is required' });
     }
 
-    const selectedProvider = providers[provider.toLowerCase()];
-    if (!selectedProvider) {
-      return res.status(400).json({ 
-        error: `Invalid provider. Available providers: ${Object.keys(providers).join(', ')}` 
-      });
+    const selected = getProvider(provider);
+    if (!selected) {
+      return res.status(400).json({ error: 'Invalid provider. Available: gogoanime, flixhq' });
     }
 
-    const results = await selectedProvider.search(query);
+    const results = await selected.instance.search(query);
     return res.json({ provider, ...results });
   } catch (error) {
     return res.status(500).json({ error: error.message || 'Error searching media' });
   }
 });
 
-// Endpoint التفاصيل والحلقات
+// Endpoint التفاصيل
 app.get('/api/info', async (req, res) => {
   try {
     const { mediaId, provider = 'gogoanime' } = req.query;
@@ -60,14 +59,14 @@ app.get('/api/info', async (req, res) => {
       return res.status(400).json({ error: 'mediaId parameter is required' });
     }
 
-    const selectedProvider = providers[provider.toLowerCase()];
-    if (!selectedProvider) {
-      return res.status(400).json({ error: 'Invalid provider' });
+    const selected = getProvider(provider);
+    if (!selected) {
+      return res.status(400).json({ error: 'Invalid provider. Available: gogoanime, flixhq' });
     }
 
-    const info = selectedProvider.fetchAnimeInfo 
-      ? await selectedProvider.fetchAnimeInfo(mediaId)
-      : await selectedProvider.fetchMediaInfo(mediaId);
+    const info = selected.type === 'anime'
+      ? await selected.instance.fetchAnimeInfo(mediaId)
+      : await selected.instance.fetchMediaInfo(mediaId);
 
     return res.json({ provider, ...info });
   } catch (error) {
@@ -75,7 +74,7 @@ app.get('/api/info', async (req, res) => {
   }
 });
 
-// Endpoint جلب رابط الـ Stream
+// Endpoint جلب الـ Stream
 app.get('/api/watch', async (req, res) => {
   try {
     const { episodeId, mediaId, provider = 'gogoanime' } = req.query;
@@ -84,12 +83,12 @@ app.get('/api/watch', async (req, res) => {
       return res.status(400).json({ error: 'episodeId parameter is required' });
     }
 
-    const selectedProvider = providers[provider.toLowerCase()];
-    if (!selectedProvider) {
-      return res.status(400).json({ error: 'Invalid provider' });
+    const selected = getProvider(provider);
+    if (!selected) {
+      return res.status(400).json({ error: 'Invalid provider. Available: gogoanime, flixhq' });
     }
 
-    const sources = await selectedProvider.fetchEpisodeSources(episodeId, mediaId);
+    const sources = await selected.instance.fetchEpisodeSources(episodeId, mediaId);
     return res.json({ provider, ...sources });
   } catch (error) {
     return res.status(500).json({ error: error.message || 'Error fetching stream' });
