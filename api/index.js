@@ -14,9 +14,9 @@ function getProvider(name) {
     case 'gogoanime':
       return { instance: new ANIME.Gogoanime(), type: 'anime' };
     case 'movies':
-    case 'flixhq':
-      // استعمال MovieKdramacool كبديل قوي للأفلام والمسلسلات بدون Block
-      return { instance: new MOVIES.MovieKdramacool(), type: 'movie' };
+    case 'dramacool':
+      // الاسم الصحيح فـ Consumet هو DramaCool
+      return { instance: new MOVIES.DramaCool(), type: 'movie' };
     default:
       return null;
   }
