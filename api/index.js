@@ -7,51 +7,55 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// تغيير المصدر لـ MovieHDWatch أو FlixHQ مع التعامل مع الأخطاء
-const provider = new MOVIES.MovieHDWatch();
+// استخدام FlixHQ (موجود ومضمون فـ MOVIES)
+const flixhq = new MOVIES.FlixHQ();
 
+// Root Route
 app.get('/', (req, res) => {
-  res.status(200).json({ status: 'online', message: 'Consumet API is working' });
+  res.status(200).json({
+    status: 'online',
+    message: 'Consumet Express API is running on Vercel!'
+  });
 });
 
 // Endpoint البحث
 app.get('/api/search', async (req, res) => {
   try {
     const { query } = req.query;
-    if (!query) return res.status(400).json({ error: 'Query parameter required' });
+    if (!query) return res.status(400).json({ error: 'Query parameter is required' });
 
-    const results = await provider.search(query);
+    const results = await flixhq.search(query);
     return res.json(results);
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message || 'Error searching media' });
   }
 });
 
-// Endpoint جلب المعلومات
+// Endpoint المعطيات التفصيلية والحلقات
 app.get('/api/info', async (req, res) => {
   try {
     const { mediaId } = req.query;
-    if (!mediaId) return res.status(400).json({ error: 'mediaId parameter required' });
+    if (!mediaId) return res.status(400).json({ error: 'mediaId parameter is required' });
 
-    const info = await provider.fetchMediaInfo(mediaId);
+    const info = await flixhq.fetchMediaInfo(mediaId);
     return res.json(info);
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message || 'Error fetching info' });
   }
 });
 
-// Endpoint جلب الـ Stream
+// Endpoint جلب رابط الـ Stream (m3u8)
 app.get('/api/watch', async (req, res) => {
   try {
     const { episodeId, mediaId } = req.query;
     if (!episodeId || !mediaId) {
-      return res.status(400).json({ error: 'episodeId and mediaId parameters required' });
+      return res.status(400).json({ error: 'episodeId and mediaId parameters are required' });
     }
 
-    const sources = await provider.fetchEpisodeSources(episodeId, mediaId);
+    const sources = await flixhq.fetchEpisodeSources(episodeId, mediaId);
     return res.json(sources);
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message || 'Error fetching sources' });
   }
 });
 
