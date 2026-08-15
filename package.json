@@ -8,6 +8,7 @@
   "dependencies": {
     "@consumet/extensions": "^1.5.0",
     "cors": "^2.8.5",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "https-proxy-agent": "^7.0.4"
   }
 }
