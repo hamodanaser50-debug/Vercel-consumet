@@ -9,16 +9,18 @@ app.use(express.json());
 
 const flixhq = new MOVIES.FlixHQ();
 
-// Endpoint للتحقق من عمل الباكأند
+// 1. إضافة الـ Route الرئيسي لمعالجة طلبات الصفحة الأولى /
 app.get('/', (req, res) => {
-  res.send('Vercel Serverless Express Backend is Running!');
+  res.status(200).json({
+    status: 'online',
+    message: 'Consumet API is running successfully on Vercel!'
+  });
 });
 
-// Endpoint لجلب رابط Stream
+// 2. الـ Endpoint الخاص بجلب الـ Stream للمشغل
 app.get('/api/watch', async (req, res) => {
   try {
     const { episodeId, mediaId } = req.query;
-
     if (!episodeId || !mediaId) {
       return res.status(400).json({ error: 'episodeId and mediaId are required' });
     }
@@ -30,5 +32,4 @@ app.get('/api/watch', async (req, res) => {
   }
 });
 
-// تصدير تطبيق Express كـ Handler لـ Vercel
 export default app;
