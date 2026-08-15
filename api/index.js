@@ -1,61 +1,95 @@
 import express from 'express';
 import cors from 'cors';
-import { MOVIES } from '@consumet/extensions';
+import { MOVIES, ANIME } from '@consumet/extensions';
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// استخدام FlixHQ (موجود ومضمون فـ MOVIES)
-const flixhq = new MOVIES.FlixHQ();
+// تهيئة المصادر
+const providers = {
+  gogoanime: new ANIME.Gogoanime(),
+  zoro: new ANIME.Zoro(),
+  kdrama: new MOVIES.MovieKdramacool(),
+  flixhq: new MOVIES.FlixHQ()
+};
 
-// Root Route
+// 1. الصفحة الرئيسية لتفقد السيرفر وقائمة المصادر
 app.get('/', (req, res) => {
   res.status(200).json({
     status: 'online',
-    message: 'Consumet Express API is running on Vercel!'
+    availableProviders: Object.keys(providers),
+    defaultProvider: 'gogoanime'
   });
 });
 
-// Endpoint البحث
+// 2. Endpoint البحث (يدعم تكييف المصدر)
 app.get('/api/search', async (req, res) => {
   try {
-    const { query } = req.query;
-    if (!query) return res.status(400).json({ error: 'Query parameter is required' });
+    const { query, provider = 'gogoanime' } = req.query;
 
-    const results = await flixhq.search(query);
-    return res.json(results);
+    if (!query) {
+      return res.status(400).json({ error: 'Query parameter required (e.g. ?query=avatar)' });
+    }
+
+    const selectedProvider = providers[provider.toLowerCase()];
+    if (!selectedProvider) {
+      return res.status(400).json({ 
+        error: `Invalid provider. Choose from: ${Object.keys(providers).join(', ')}` 
+      });
+    }
+
+    const results = await selectedProvider.search(query);
+    return res.json({ provider, ...results });
   } catch (error) {
     return res.status(500).json({ error: error.message || 'Error searching media' });
   }
 });
 
-// Endpoint المعطيات التفصيلية والحلقات
+// 3. Endpoint جلب التفاصيل والحلقات
 app.get('/api/info', async (req, res) => {
   try {
-    const { mediaId } = req.query;
-    if (!mediaId) return res.status(400).json({ error: 'mediaId parameter is required' });
+    const { mediaId, provider = 'gogoanime' } = req.query;
 
-    const info = await flixhq.fetchMediaInfo(mediaId);
-    return res.json(info);
+    if (!mediaId) {
+      return res.status(400).json({ error: 'mediaId parameter required' });
+    }
+
+    const selectedProvider = providers[provider.toLowerCase()];
+    if (!selectedProvider) {
+      return res.status(400).json({ error: 'Invalid provider' });
+    }
+
+    // دعم الاختلاف بين طريقة fetchAnimeInfo و fetchMediaInfo
+    const info = selectedProvider.fetchAnimeInfo 
+      ? await selectedProvider.fetchAnimeInfo(mediaId)
+      : await selectedProvider.fetchMediaInfo(mediaId);
+
+    return res.json({ provider, ...info });
   } catch (error) {
     return res.status(500).json({ error: error.message || 'Error fetching info' });
   }
 });
 
-// Endpoint جلب رابط الـ Stream (m3u8)
+// 4. Endpoint جلب رابط الـ Stream (m3u8)
 app.get('/api/watch', async (req, res) => {
   try {
-    const { episodeId, mediaId } = req.query;
-    if (!episodeId || !mediaId) {
-      return res.status(400).json({ error: 'episodeId and mediaId parameters are required' });
+    const { episodeId, mediaId, provider = 'gogoanime' } = req.query;
+
+    if (!episodeId) {
+      return res.status(400).json({ error: 'episodeId parameter required' });
     }
 
-    const sources = await flixhq.fetchEpisodeSources(episodeId, mediaId);
-    return res.json(sources);
+    const selectedProvider = providers[provider.toLowerCase()];
+    if (!selectedProvider) {
+      return res.status(400).json({ error: 'Invalid provider' });
+    }
+
+    const sources = await selectedProvider.fetchEpisodeSources(episodeId, mediaId);
+    return res.json({ provider, ...sources });
   } catch (error) {
-    return res.status(500).json({ error: error.message || 'Error fetching sources' });
+    return res.status(500).json({ error: error.message || 'Error fetching stream sources' });
   }
 });
 
